@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园记忆墙</title>
+  <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .loading {
+      text-align: center;
+      color: white;
+      font-size: 1.5em;
+      padding: 40px;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    
+    .stat-card {
+      background: rgba(255,255,255,0.95);
+      padding: 15px 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .stat-card .number {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .stat-card .label {
+      color: #666;
+      font-size: 0.9em;
+    }
+    
+    .filters {
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .filter-group {
+      margin-bottom: 15px;
+    }
+    
+    .filter-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    .filter-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .filter-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+      padding: 8px 16px;
+      border: 2px solid #667eea;
+      background: white;
+      color: #667eea;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.9em;
+    }
+    
+    .filter-btn:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    .filter-btn.active {
+      background: #667eea;
+      color: white;
+    }
+    
+    .memories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    
+    .memory-card {
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+    
+    .memory-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+    
+    .memory-image {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .memory-content {
+      padding: 20px;
+    }
+    
+    .memory-text {
+      color: #333;
+      line-height: 1.6;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+    
+    .memory-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    
+    .tag {
+      background: #f0f4ff;
+      color: #667eea;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8em;
+    }
+    
+    .memory-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #999;
+      font-size: 0.85em;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
+    }
+    
+    .identity-badge {
+      background: #764ba2;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 0.85em;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 20px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-image {
+      width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+      background: #f5f5f5;
+    }
+    
+    .modal-body {
+      padding: 30px;
+    }
+    
+    .close-btn {
+      position: sticky;
+      top: 10px;
+      right: 10px;
+      float: right;
+      font-size: 2em;
+      color: #999;
+      cursor: pointer;
+      z-index: 1001;
+      background: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .close-btn:hover {
+      color: #333;
+    }
+    
+    .no-results {
+      text-align: center;
+      color: white;
+      font-size: 1.2em;
+      padding: 40px;
+    }
+    
+    .error-message {
+      background: rgba(255, 107, 107, 0.95);
+      color: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎓 校园记忆墙</h1>
+      <p>珍藏每一个美好瞬间</p>
+    </div>
+    
+    <div id="loadingIndicator" class="loading">
+      ⏳ 正在加载数据...
+    </div>
+    
+    <div id="errorMessage" style="display: none;"></div>
+    
+    <div id="mainContent" style="display: none;">
+      <div class="stats" id="stats"></div>
+      
+      <div class="filters">
+        <div class="filter-group">
+          <label>📌 按标签筛选：</label>
+          <div class="filter-buttons" id="tagFilters"></div>
+        </div>
+        <div class="filter-group">
+          <label>👤 按身份筛选：</label>
+          <div class="filter-buttons" id="identityFilters"></div>
+        </div>
+      </div>
+      
+      <div class="memories-grid" id="memoriesGrid"></div>
+    </div>
+  </div>
+  
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <div class="close-btn" onclick="closeModal()">&times;</div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  
+  <script>
+    // ==========================================
+    // 🔧 在这里填写你的 LeanCloud 配置信息
+    // ==========================================
+    const LEANCLOUD_CONFIG = {
+      appId: 'AjDlSqRRtPZxgvP7oKE51Ed3-MdYXbMMI',           // 替换为你的 App ID
+      appKey: 'AmW2gLklfoggtMLACiWLkYZr',         // 替换为你的 App Key
+      serverURL: 'https://files.gdufs60memory.site'    // 替换为你的 Server URL，如果没有可以删除这一行
+    };
+    // ==========================================
+    
+    let allMemories = [];
+    let currentFilter = { tags: [], identity: [] };
+    
+    // 页面加载时自动连接
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 初始化 LeanCloud
+        AV.init(LEANCLOUD_CONFIG);
+        
+        // 查询数据
+        const query = new AV.Query('Memory');
+        query.limit(1000);
+        query.descending('createdAt');
+        
+        const results = await query.find();
+        
+        // 转换数据格式
+        allMemories = results.map(obj => {
+          const data = obj.toJSON();
+          return {
+            content: data.content || '',
+            tags: data.tags || [],
+            identity: data.identity || '未知',
+            grade: data.grade || '',
+            nickname: data.nickname || '',
+            photo: data.photo || '',
+            createdAt: data.createdAt,
+            objectId: data.objectId
+          };
+        });
+        
+        // 隐藏加载指示器，显示主内容
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        
+        // 渲染界面
+        initializeUI();
+        renderMemories();
+        
+      } catch (error) {
+        console.error('LeanCloud 连接错误:', error);
+        document.getElementById('loadingIndicator').style.display = 'none';
+        showError('连接失败: ' + error.message + '。请检查配置信息是否正确。');
+      }
+    });
+    
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.className = 'error-message';
+      errorDiv.innerHTML = `<h3>❌ 加载失败</h3><p>${message}</p>`;
+      errorDiv.style.display = 'block';
+    }
+    
+    function initializeUI() {
+      // 统计数据
+      const allTags = new Set();
+      const allIdentities = new Set();
+      let photoCount = 0;
+      
+      allMemories.forEach(m => {
+        if (m.tags) m.tags.forEach(t => allTags.add(t));
+        if (m.identity) allIdentities.add(m.identity);
+        if (m.photo) photoCount++;
+      });
+      
+      // 渲染统计卡片
+      document.getElementById('stats').innerHTML = `
+        <div class="stat-card">
+          <div class="number">${allMemories.length}</div>
+          <div class="label">条记忆</div>
+        </div>
+        <div class="stat-card">
+          <div class="number">${photoCount}</div>
+          <div class="label">张照片</div>
+        </div>
+        <div class="stat-card">
+          <div class="number">${allTags.size}</div>
+          <div class="label">个标签</div>
+        </div>
+      `;
+      
+      // 渲染筛选按钮
+      const tagFilters = document.getElementById('tagFilters');
+      tagFilters.innerHTML = '<button class="filter-btn active" onclick="filterByTag(null)">全部</button>';
+      Array.from(allTags).sort().forEach(tag => {
+        tagFilters.innerHTML += `<button class="filter-btn" onclick="filterByTag('${tag}')">${tag}</button>`;
+      });
+      
+      const identityFilters = document.getElementById('identityFilters');
+      identityFilters.innerHTML = '<button class="filter-btn active" onclick="filterByIdentity(null)">全部</button>';
+      Array.from(allIdentities).sort().forEach(identity => {
+        identityFilters.innerHTML += `<button class="filter-btn" onclick="filterByIdentity('${identity}')">${identity}</button>`;
+      });
+    }
+    
+    function filterByTag(tag) {
+      const buttons = document.querySelectorAll('#tagFilters .filter-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      currentFilter.tags = tag ? [tag] : [];
+      renderMemories();
+    }
+    
+    function filterByIdentity(identity) {
+      const buttons = document.querySelectorAll('#identityFilters .filter-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      currentFilter.identity = identity ? [identity] : [];
+      renderMemories();
+    }
+    
+    function renderMemories() {
+      const grid = document.getElementById('memoriesGrid');
+      const filtered = allMemories.filter(m => {
+        if (currentFilter.tags.length && !m.tags.some(t => currentFilter.tags.includes(t))) return false;
+        if (currentFilter.identity.length && !currentFilter.identity.includes(m.identity)) return false;
+        return true;
+      });
+      
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div class="no-results">😢 没有找到相关记忆</div>';
+        return;
+      }
+      
+      grid.innerHTML = filtered.map((m, i) => {
+        const index = allMemories.indexOf(m);
+        return `
+          <div class="memory-card" onclick="showModal(${index})">
+            ${m.photo ? `<img src="${m.photo}" class="memory-image" alt="记忆照片" onerror="this.style.display='none'">` : ''}
+            <div class="memory-content">
+              <div class="memory-text">${m.content}</div>
+              <div class="memory-tags">
+                ${(m.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+              </div>
+              <div class="memory-meta">
+                <span>${m.grade || '未知年级'}</span>
+                <span class="identity-badge">${m.identity}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function showModal(index) {
+      const m = allMemories[index];
+      const modal = document.getElementById('modal');
+      const modalBody = document.getElementById('modalBody');
+      
+      modalBody.innerHTML = `
+        ${m.photo ? `<img src="${m.photo}" class="modal-image" alt="记忆照片">` : ''}
+        <div class="modal-body">
+          <h2 style="color: #667eea; margin-bottom: 15px;">💭 ${m.nickname || '匿名'}</h2>
+          <p style="line-height: 1.8; color: #333; font-size: 1.1em; margin-bottom: 20px;">${m.content}</p>
+          <div class="memory-tags" style="margin-bottom: 15px;">
+            ${(m.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+          </div>
+          <div style="color: #999; font-size: 0.9em;">
+            <p>📚 ${m.grade || '未知年级'}</p>
+            <p>👤 ${m.identity}</p>
+            <p>🕒 ${new Date(m.createdAt).toLocaleString('zh-CN')}</p>
+          </div>
+        </div>
+      `;
+      
+      modal.classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+    
+    // 点击模态框背景关闭
+    document.getElementById('modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+</body>
+</html>
